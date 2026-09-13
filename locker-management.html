@@ -161,19 +161,19 @@
   }
   .controls > button:hover{background:var(--steel-light);}
 
-  .grid-wrap{padding:8px 28px 40px;}
+  .grid-wrap{padding:8px 28px 40px;overflow-x:auto;}
   .locker-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(108px,1fr));
-    gap:12px;
+    grid-template-columns:repeat(18,minmax(70px,1fr));
+    gap:8px;
   }
   .locker{
     position:relative;
-    height:132px;
+    min-height:112px;
     border-radius:10px;
     border:2px solid var(--border);
     background:#fff;
-    padding:10px 8px;
+    padding:8px 6px;
     display:flex;
     flex-direction:column;
     justify-content:space-between;
@@ -186,23 +186,23 @@
   .locker .vents span{display:block;height:2px;background:var(--border);border-radius:1px;}
   .locker .handle{
     position:absolute;
-    right:8px;
+    right:6px;
     top:50%;
-    width:8px;height:8px;
+    width:7px;height:7px;
     border-radius:50%;
     background:var(--border);
   }
   .locker .cable-lock-dot{
     position:absolute;
-    left:8px;
-    top:8px;
-    width:8px;height:8px;
+    left:6px;
+    top:6px;
+    width:7px;height:7px;
     border-radius:50%;
     background:#000;
   }
-  .locker .num{font-size:20px;font-weight:700;}
-  .locker .who{font-size:11.5px;color:var(--text-muted);line-height:1.3;word-break:break-word;}
-  .locker .who-empid{font-size:10px;opacity:.8;margin-bottom:1px;font-weight:600;letter-spacing:.2px;}
+  .locker .num{font-size:14px;font-weight:700;}
+  .locker .who{font-size:9.5px;color:var(--text-muted);line-height:1.25;word-break:break-word;}
+  .locker .who-empid{font-size:8px;opacity:.8;margin-bottom:1px;font-weight:600;letter-spacing:.2px;}
 
   .locker.available{border-color:var(--available);background:var(--available-bg);}
   .locker.available .vents span{background:var(--available);opacity:.35;}
@@ -555,7 +555,7 @@
   <div class="overview-table-wrap">
     <table class="overview-table" id="overviewTable">
       <thead>
-        <tr><th>ล็อคเกอร์</th><th>โซน</th><th>สถานะ</th><th>พนักงาน</th><th>แผนก</th><th></th></tr>
+        <tr><th>โซน</th><th>ล็อคเกอร์</th><th>สถานะ</th><th>พนักงาน</th><th>แผนก</th><th></th></tr>
       </thead>
       <tbody id="overviewTableBody"></tbody>
     </table>
@@ -1017,7 +1017,7 @@ function render(){
       if(!hay.includes(q)) return false;
     }
     return true;
-  });
+  }).sort((a,b)=> (a.number || '').localeCompare(b.number || '', undefined, { numeric: true }));
 
   document.getElementById('statTotal').textContent = zoneLockers.length;
   document.getElementById('statAvailable').textContent = zoneLockers.filter(l=>l.status==='available').length;
@@ -1106,6 +1106,10 @@ function renderOverview(){
       if(!hay.includes(q)) return false;
     }
     return true;
+  }).sort((a,b)=>{
+    const za = zoneList.indexOf(a.zone), zb = zoneList.indexOf(b.zone);
+    if(za !== zb) return za - zb;
+    return (a.number || '').localeCompare(b.number || '', undefined, { numeric: true });
   });
 
   const table = document.getElementById('overviewTable');
@@ -1127,8 +1131,8 @@ function renderOverview(){
     const dept = l.status === 'assigned' ? (l.department || '-') : '-';
     return `
       <tr>
-        <td><strong>${l.number}</strong></td>
         <td>${l.zone}</td>
+        <td><strong>${l.number}</strong></td>
         <td><span class="ov-status ${l.status}">${statusLabel(l.status)}</span></td>
         <td>${who}</td>
         <td>${dept}</td>

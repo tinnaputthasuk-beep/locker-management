@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ระบบจัดการล็อคเกอร์พนักงาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f7fb;
+    --panel:#ffffff;
+    --steel:#4338ca;
+    --steel-light:#6366f1;
+    --steel-dark:#3730a3;
+    --brass:#eab308;
+    --brass-light:#facc15;
+    --brass-text:#a16207;
+    --available:#059669;
+    --available-bg:#ecfdf5;
+    --maintenance:#eab308;
+    --status-assigned:#2563eb;
+    --status-assigned-dark:#1d4ed8;
+    --border:#e5e7ee;
+    --text:#0f172a;
+    --text-muted:#64748b;
+    --danger:#dc2626;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Inter","Noto Sans Thai","Leelawadee UI",system-ui,-apple-system,"Segoe UI",sans-serif;
+    min-height:100vh;
+  }
+  header{
+    background:var(--steel);
+    color:#fff;
+    padding:22px 28px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    box-shadow:0 2px 14px rgba(15,23,42,.18);
+    position:relative;
+    z-index:1;
+  }
+  header h1{
+    margin:0;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-0.3px;
+  }
+  .header-brand{display:flex;align-items:center;gap:14px;}
+  .brand-logo-wrap{
+    width:46px;height:46px;
+    flex-shrink:0;
+    background:#fff;
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    padding:5px;
+    box-shadow:0 1px 3px rgba(15,23,42,.15);
+  }
+  .brand-logo-wrap img{width:100%;height:100%;object-fit:contain;border-radius:6px;}
+  header .site{
+    background:rgba(255,255,255,.16);
+    color:#fff;
+    font-weight:600;
+    font-size:12.5px;
+    padding:6px 14px;
+    border-radius:20px;
+    letter-spacing:.2px;
+  }
+  .zone-tabs{
+    display:flex;
+    gap:2px;
+    padding:14px 28px 0;
+    background:var(--panel);
+    align-items:center;
+  }
+  .zone-tab{
+    font-family:inherit;
+    font-size:14px;
+    font-weight:600;
+    padding:11px 20px;
+    border:none;
+    border-bottom:3px solid transparent;
+    background:transparent;
+    color:var(--text-muted);
+    cursor:pointer;
+    border-radius:8px 8px 0 0;
+  }
+  .zone-tab:hover{background:var(--bg);}
+  .zone-tab.active{
+    color:var(--steel);
+    border-bottom:3px solid var(--steel);
+    background:var(--bg);
+  }
+  .zone-tab.import-tab{
+    margin-left:auto;
+    color:var(--text-muted);
+    font-weight:600;
+  }
+  .zone-tab.import-tab:hover{background:var(--bg);color:var(--steel);}
+  .zone-tab.manage-tab{
+    color:var(--text-muted);
+    font-weight:600;
+  }
+  .zone-tab.manage-tab:hover{background:var(--bg);color:var(--steel);}
+  .stats{
+    display:flex;
+    gap:1px;
+    background:var(--border);
+    border-bottom:1px solid var(--border);
+  }
+  .stat{
+    flex:1;
+    background:var(--panel);
+    padding:14px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .stat .num{font-size:26px;font-weight:700;color:var(--steel);}
+  .stat .label{font-size:12.5px;color:var(--text-muted);}
+  .stat.available .num{color:var(--available);}
+  .stat.assigned .num{color:var(--status-assigned);}
+  .stat.maintenance .num{color:var(--brass);}
+  .stat.unusable .num{color:var(--danger);}
+
+  .controls{
+    display:flex;
+    gap:10px;
+    padding:16px 28px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .controls input, .controls select{
+    font-family:inherit;
+    font-size:14px;
+    padding:9px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:#fff;
+    color:var(--text);
+  }
+  .controls input{flex:1;min-width:220px;}
+  .controls > button{
+    font-family:inherit;
+    font-size:14px;
+    font-weight:600;
+    padding:10px 16px;
+    border-radius:8px;
+    border:none;
+    background:var(--steel);
+    color:#fff;
+    cursor:pointer;
+  }
+  .controls > button:hover{background:var(--steel-light);}
+
+  .grid-wrap{padding:8px 28px 40px;}
+  .locker-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(108px,1fr));
+    gap:12px;
+  }
+  .locker{
+    position:relative;
+    height:132px;
+    border-radius:10px;
+    border:2px solid var(--border);
+    background:#fff;
+    padding:10px 8px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    cursor:pointer;
+    box-shadow:0 1px 2px rgba(15,23,42,.05);
+    transition:transform .08s ease, box-shadow .12s ease;
+  }
+  .locker:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(15,23,42,.12);}
+  .locker .vents{display:flex;flex-direction:column;gap:3px;}
+  .locker .vents span{display:block;height:2px;background:var(--border);border-radius:1px;}
+  .locker .handle{
+    position:absolute;
+    right:8px;
+    top:50%;
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--border);
+  }
+  .locker .cable-lock-dot{
+    position:absolute;
+    left:8px;
+    top:8px;
+    width:8px;height:8px;
+    border-radius:50%;
+    background:#000;
+  }
+  .locker .num{font-size:20px;font-weight:700;}
+  .locker .who{font-size:11.5px;color:var(--text-muted);line-height:1.3;word-break:break-word;}
+  .locker .who-empid{font-size:10px;opacity:.8;margin-bottom:1px;font-weight:600;letter-spacing:.2px;}
+
+  .locker.available{border-color:var(--available);background:var(--available-bg);}
+  .locker.available .vents span{background:var(--available);opacity:.35;}
+  .locker.available .handle{background:var(--available);}
+  .locker.available .who{color:var(--available);font-weight:600;}
+
+  .locker.assigned{background:var(--status-assigned);border-color:var(--status-assigned-dark);color:#fff;}
+  .locker.assigned .vents span{background:#fff;opacity:.25;}
+  .locker.assigned .handle{background:var(--brass-light);}
+  .locker.assigned .who{color:#d8dee7;}
+
+  .locker.maintenance{
+    border-color:var(--brass);
+    background:repeating-linear-gradient(135deg,#fff,#fff 8px,#f6ecd9 8px,#f6ecd9 16px);
+  }
+  .locker.maintenance .vents span{background:var(--brass);opacity:.4;}
+  .locker.maintenance .handle{background:var(--brass);}
+  .locker.maintenance .who{color:var(--brass-text);font-weight:600;}
+
+  .locker.unusable{
+    border-color:var(--danger);
+    background:repeating-linear-gradient(135deg,#fff,#fff 8px,#fee2e2 8px,#fee2e2 16px);
+  }
+  .locker.unusable .vents span{background:var(--danger);opacity:.4;}
+  .locker.unusable .handle{background:var(--danger);}
+  .locker.unusable .who{color:var(--danger);font-weight:600;}
+
+  .empty-msg{color:var(--text-muted);font-size:14px;padding:20px 4px;}
+
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(20,28,41,.45);
+    display:flex;justify-content:flex-end;
+    z-index:20;
+  }
+  .overlay.hidden{display:none;}
+  .panel{
+    width:380px;max-width:92vw;
+    background:#fff;
+    height:100%;
+    padding:26px 24px;
+    overflow-y:auto;
+    box-shadow:-6px 0 24px rgba(0,0,0,.15);
+  }
+  .panel h2{margin:0 0 4px;font-size:18px;}
+  .panel .sub{color:var(--text-muted);font-size:13px;margin-bottom:18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--text);}
+  .field input, .field select{
+    width:100%;
+    font-family:inherit;
+    font-size:14px;
+    padding:9px 11px;
+    border:1px solid var(--border);
+    border-radius:8px;
+  }
+  .checkline{display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13.5px;}
+  .panel-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn{
+    flex:1;
+    font-family:inherit;
+    font-size:14px;
+    font-weight:600;
+    padding:11px;
+    border-radius:8px;
+    border:none;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--steel);color:#fff;}
+  .btn-primary:hover{background:var(--steel-light);}
+  .btn-danger{background:#fff;color:var(--danger);border:1px solid var(--danger);}
+  .btn-danger:hover{background:#fbeeee;}
+  .btn-ghost{background:#fff;color:var(--text-muted);border:1px solid var(--border);}
+  .btn-ghost:hover{background:#f5f6f7;}
+  .status-badge{
+    display:inline-block;font-size:12px;font-weight:700;
+    padding:3px 10px;border-radius:20px;margin-bottom:16px;
+  }
+  .status-badge.available{background:var(--available-bg);color:var(--available);}
+  .status-badge.assigned{background:var(--status-assigned);color:#fff;}
+  .status-badge.maintenance{background:#f6ecd9;color:var(--brass-text);}
+  .status-badge.unusable{background:#fee2e2;color:var(--danger);}
+  .loading{padding:60px;text-align:center;color:var(--text-muted);}
+
+  .return-current{background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:18px;}
+  .btn-return{background:var(--danger);color:#fff;}
+  .btn-return:hover{background:#8a3232;}
+  .history-section{margin-top:24px;border-top:1px solid var(--border);padding-top:16px;}
+  .history-title{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);}
+  .history-item{padding:10px 0;border-bottom:1px solid var(--border);}
+  .history-item:last-child{border-bottom:none;}
+  .history-item-top{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;}
+  .history-date{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+  .history-item-sub{font-size:12.5px;color:var(--text-muted);margin-top:2px;}
+  .history-item-note{font-size:12.5px;color:var(--text);margin-top:3px;font-style:italic;}
+  .key-warning{color:var(--danger);font-weight:600;}
+
+  .note-chip-group{display:flex;flex-wrap:wrap;gap:8px;}
+  .note-chip{
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    padding:8px 13px;
+    border-radius:20px;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .note-chip:hover{border-color:var(--steel-light);}
+  .note-chip.active{background:var(--steel);border-color:var(--steel);color:#fff;}
+  .note-chip[data-value="available"].active{background:var(--available);border-color:var(--available);color:#fff;}
+  .note-chip[data-value="assigned"].active{background:var(--status-assigned);border-color:var(--status-assigned);color:#fff;}
+  .note-chip[data-value="maintenance"].active{background:var(--brass);border-color:var(--brass);color:#1f2937;}
+  .note-chip[data-value="unusable"].active{background:var(--danger);border-color:var(--danger);color:#fff;}
+
+  .photo-upload-row{display:flex;align-items:center;gap:12px;}
+  .photo-preview{
+    width:64px;height:64px;border-radius:8px;border:1px dashed var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;color:var(--text-muted);overflow:hidden;flex-shrink:0;
+    background:var(--bg);text-align:center;
+  }
+  .photo-preview img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;}
+
+  .photo-lightbox{
+    position:fixed;inset:0;
+    background:rgba(15,23,42,.85);
+    display:flex;align-items:center;justify-content:center;
+    z-index:1000;
+    cursor:zoom-out;
+    padding:24px;
+  }
+  .photo-lightbox.hidden{display:none;}
+  .photo-lightbox img{
+    max-width:90vw;max-height:90vh;
+    border-radius:10px;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+  .photo-upload-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+  .photo-upload-btn{
+    display:inline-block;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:600;
+    padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+    background:#fff;color:var(--text);
+  }
+  .photo-upload-btn:hover{border-color:var(--steel-light);}
+  .photo-remove-btn{
+    background:none;border:none;color:var(--danger);font-family:inherit;font-size:12px;
+    cursor:pointer;text-decoration:underline;padding:0;
+  }
+
+  .locker-hover-preview{
+    display:none;
+    position:absolute;
+    bottom:100%;
+    left:50%;
+    transform:translateX(-50%);
+    margin-bottom:8px;
+    z-index:999;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:6px;
+    box-shadow:0 10px 24px rgba(15,23,42,.24);
+    pointer-events:none;
+  }
+  .locker-hover-preview img{
+    width:120px;height:120px;object-fit:cover;border-radius:6px;display:block;
+  }
+  .locker:hover .locker-hover-preview{display:block;}
+
+  .zone-summary-cards{display:flex;gap:14px;padding:16px 28px;flex-wrap:wrap;}
+  .zone-card{
+    flex:1;min-width:220px;
+    background:#fff;border:1px solid var(--border);border-radius:12px;
+    padding:16px 18px;cursor:pointer;
+    box-shadow:0 1px 2px rgba(15,23,42,.04);
+    transition:box-shadow .12s ease, border-color .12s ease;
+  }
+  .zone-card:hover{border-color:var(--steel-light);box-shadow:0 6px 16px rgba(15,23,42,.08);}
+  .zone-card h3{margin:0 0 12px;font-size:14.5px;color:var(--steel);}
+  .zone-card .mini-stats{display:flex;gap:16px;}
+  .zone-card .mini-stats div{font-size:12px;color:var(--text-muted);}
+  .zone-card .mini-stats b{display:block;font-size:19px;color:var(--text);font-weight:700;}
+
+  .overview-table-wrap{padding:4px 28px 40px;}
+  table.overview-table{
+    width:100%;border-collapse:collapse;background:#fff;
+    border:1px solid var(--border);border-radius:12px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(15,23,42,.04);
+  }
+  table.overview-table th{
+    background:var(--bg);text-align:left;font-size:12px;color:var(--text-muted);
+    padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;
+  }
+  table.overview-table td{padding:10px 14px;font-size:13.5px;border-bottom:1px solid var(--border);}
+  table.overview-table tr:last-child td{border-bottom:none;}
+  .ov-status{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;}
+  .ov-empid{font-size:11px;color:var(--text-muted);margin-bottom:1px;}
+  .ov-status.available{background:var(--available-bg);color:var(--available);}
+  .ov-status.assigned{background:var(--status-assigned);color:#fff;}
+  .ov-status.maintenance{background:#f6ecd9;color:var(--brass-text);}
+  .ov-status.unusable{background:#fee2e2;color:var(--danger);}
+  .ov-link{
+    color:var(--steel);font-weight:600;cursor:pointer;text-decoration:underline;
+    background:none;border:none;font-family:inherit;font-size:13px;padding:0;
+  }
+  .ov-link:hover{color:var(--brass);}
+
+  .chart-section{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px 20px 6px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04);
+    flex:1;
+    min-width:280px;
+    margin:0;
+  }
+  .charts-row{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin:16px 28px 4px;
+  }
+  .chart-title-row{
+    display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:8px;margin-bottom:8px;
+  }
+  .chart-title{font-size:14.5px;font-weight:700;color:var(--steel);}
+  .chart-legend{display:flex;gap:14px;flex-wrap:wrap;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);}
+  .legend-swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  .pie-chart-layout{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:6px 0 16px;}
+  .pie-svg-wrap{flex-shrink:0;width:150px;}
+  .pie-legend-list{flex:1;min-width:150px;display:flex;flex-direction:column;gap:12px;}
+  .pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .pie-legend-label{flex:1;color:var(--text);font-weight:600;}
+  .pie-legend-value{color:var(--text-muted);font-size:12.5px;white-space:nowrap;}
+
+  .zone-manage-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .zm-input{flex:1;font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;}
+  .zm-count{font-size:11.5px;color:var(--text-muted);white-space:nowrap;min-width:44px;text-align:right;}
+  .zm-delete{
+    width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--danger);
+    cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;
+  }
+  .zm-delete:hover{background:#fef2f2;border-color:var(--danger);}
+  .zm-move-stack{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+  .zm-move{
+    width:22px;height:15px;border-radius:4px;border:1px solid var(--border);background:#fff;color:var(--text-muted);
+    cursor:pointer;font-size:9px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;
+  }
+  .zm-move:hover:not(:disabled){background:var(--bg);border-color:var(--steel-light);color:var(--steel);}
+  .zm-move:disabled{opacity:.3;cursor:not-allowed;}
+
+  .import-format-box{
+    background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:14px;
+    font-size:12.5px;color:var(--text-muted);
+  }
+  .import-format-cols{margin-top:6px;color:var(--text);font-weight:600;line-height:1.6;}
+  .import-format-note{margin-top:8px;}
+  .import-status{font-size:13px;color:var(--text);margin-bottom:6px;line-height:1.7;}
+  .import-error{color:var(--danger);}
+  .import-error-list{margin:6px 0 0;padding-left:18px;font-size:12.5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="brand-logo-wrap">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAJYCAIAAAAxBA+LAAAih0lEQVR42u3deXjV9aHncdt7p+3M3Jk7tzNXVJRa2UQUwV0U16DiirhWFNFacOVaK6jFrV5qhadPdUQffHzureDo87S0tywSNtllF5BVErZACFsgyUmQQPxrzvF4D4eIQsJJzm95Pc/rry72ybfhvPl9ku85xyX2fgkAsXWcIwBACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAFACAEQQqcAgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACgBACIIQAIIQAIIRA81lbtOORB//vO28VViQOOA0QQoiRPZX7R7w5oeNPHjztn+9Juu6yZ2bNXO1YQAghFqZNXVHQ9el0AjNaH997QL+3Npbsdj4ghBBZ6zeUJ2uXiV/7ln1eeHZUz+4vZP6Vs1s/lHxStJSCEEI0t9AzT30w07w7bnpl2bKS5L9VVVP3wfuzzjv94cy/lVpKZ61xaCCEEBHTP15Z0HVgpnMXdnw0Wb56/5nSsqrBg0a2PeFeSykIIUR2C2174n3J2m3bUf1t//lFC9f3vOZFSykIIURwC739ht8sXVpyxP9ieik9t/3BpbTH5c9aSkEIIVRb6LSV3S85uIVecEZqC00W7uj/CZZSEEII5xa6MbWFJruVvYWWbU807p+2YP66Wwr8TikIIYRBRVVqCz3rpz/PdOumgsHz5hYf4z+2sjq1lJ7Trn/2Ujp7tqUUhBCCZMb0VddcOijTqi5t+40YXphsWK7++Vu2ViafLNu06J29lG7avMfJgxBCnm3YdMgWmmzVE/3f3lxa0RT/W/PnFd9c8LylFIQQArSFdjrtoUyZbrjq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" alt="Thai Wah">
+    </div>
+    <h1>ระบบจัดการล็อคเกอร์พนักงาน</h1>
+  </div>
+  <span class="site">โรงงาน Banglane (BL Site)</span>
+</header>
+
+<div class="zone-tabs" id="zoneTabs"></div>
+
+<div id="zoneView">
+  <div class="stats">
+    <div class="stat"><span class="num" id="statTotal">0</span><span class="label">ล็อคเกอร์ทั้งหมด</span></div>
+    <div class="stat available"><span class="num" id="statAvailable">0</span><span class="label">ว่าง</span></div>
+    <div class="stat assigned"><span class="num" id="statAssigned">0</span><span class="label">ใช้งานแล้ว</span></div>
+    <div class="stat maintenance"><span class="num" id="statMaintenance">0</span><span class="label">ซ่อมบำรุง</span></div>
+    <div class="stat unusable"><span class="num" id="statUnusable">0</span><span class="label">ใช้งานไม่ได้</span></div>
+  </div>
+
+  <div class="controls">
+    <input id="search" type="text" placeholder="ค้นหาชื่อพนักงาน, รหัสพนักงาน หรือหมายเลขล็อคเกอร์">
+    <div class="note-chip-group" id="statusFilterChips" data-value="">
+      <button type="button" class="note-chip active" data-value="">ทุกสถานะ</button>
+      <button type="button" class="note-chip" data-value="available">ว่าง</button>
+      <button type="button" class="note-chip" data-value="assigned">ใช้งานแล้ว</button>
+      <button type="button" class="note-chip" data-value="maintenance">ซ่อมบำรุง</button>
+      <button type="button" class="note-chip" data-value="unusable">ใช้งานไม่ได้</button>
+    </div>
+    <button id="addLockerBtn">+ เพิ่มล็อคเกอร์</button>
+  </div>
+
+  <div class="grid-wrap">
+    <div id="loading" class="loading">กำลังโหลดข้อมูลล็อคเกอร์...</div>
+    <div id="lockerGrid" class="locker-grid" style="display:none;"></div>
+    <div id="emptyMsg" class="empty-msg" style="display:none;">ไม่พบล็อคเกอร์ที่ตรงกับเงื่อนไขค่ะ</div>
+  </div>
+</div>
+
+<div id="overviewView" style="display:none;">
+  <div class="stats">
+    <div class="stat"><span class="num" id="ovStatTotal">0</span><span class="label">ล็อคเกอร์ทั้งหมด (ทุกโซน)</span></div>
+    <div class="stat available"><span class="num" id="ovStatAvailable">0</span><span class="label">ว่าง</span></div>
+    <div class="stat assigned"><span class="num" id="ovStatAssigned">0</span><span class="label">ใช้งานแล้ว</span></div>
+    <div class="stat maintenance"><span class="num" id="ovStatMaintenance">0</span><span class="label">ซ่อมบำรุง</span></div>
+    <div class="stat unusable"><span class="num" id="ovStatUnusable">0</span><span class="label">ใช้งานไม่ได้</span></div>
+  </div>
+
+  <div class="zone-summary-cards" id="zoneSummaryCards"></div>
+
+  <div class="controls">
+    <input id="ovSearch" type="text" placeholder="ค้นหาชื่อพนักงานหรือรหัสพนักงาน เพื่อดูว่าอยู่ล็อคเกอร์โซนไหน ตู้ไหน">
+    <div class="note-chip-group" id="ovStatusFilterChips" data-value="">
+      <button type="button" class="note-chip active" data-value="">ทุกสถานะ</button>
+      <button type="button" class="note-chip" data-value="available">ว่าง</button>
+      <button type="button" class="note-chip" data-value="assigned">ใช้งานแล้ว</button>
+      <button type="button" class="note-chip" data-value="maintenance">ซ่อมบำรุง</button>
+      <button type="button" class="note-chip" data-value="unusable">ใช้งานไม่ได้</button>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-section">
+      <div class="chart-title-row">
+        <div class="chart-title">เปรียบเทียบจำนวนล็อคเกอร์ตามโซนและสถานะ</div>
+        <div class="chart-legend" id="chartLegend"></div>
+      </div>
+      <div id="barChartWrap"></div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title-row">
+        <div class="chart-title">สัดส่วนสถานะล็อคเกอร์ทั้งหมด</div>
+      </div>
+      <div id="pieChartWrap"></div>
+    </div>
+  </div>
+
+  <div class="overview-table-wrap">
+    <table class="overview-table" id="overviewTable">
+      <thead>
+        <tr><th>ล็อคเกอร์</th><th>โซน</th><th>สถานะ</th><th>พนักงาน</th><th>แผนก</th><th></th></tr>
+      </thead>
+      <tbody id="overviewTableBody"></tbody>
+    </table>
+    <div id="ovEmptyMsg" class="empty-msg" style="display:none;">ไม่พบล็อคเกอร์ที่ตรงกับเงื่อนไขค่ะ</div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay hidden">
+  <div class="panel" id="panelContent"></div>
+</div>
+
+<div id="photoLightbox" class="photo-lightbox hidden">
+  <img id="photoLightboxImg" src="" alt="">
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby8T9JD-REqWnJaWeLiScpN3Gk1eiy4qToXMax1sYazvqoURfS4n58_vFSzSJo3LUURVg/exec';
+const ACCESS_CODE_STORAGE_KEY = 'lockerAccessCode';
+let accessCode = null;
+let lockers = [];
+let zoneList = [];
+let currentLockerId = null;
+let mode = null; // 'edit' | 'new' | 'return' | 'manageZones'
+let currentZone = '__overview__';
+let zoneManageRows = [];
+let parsedImportRows = null;
+let pendingEmpPhoto;
+let pendingIssuePhoto;
+let activePhotoUploads = [];
+
+function openLightbox(src){
+  document.getElementById('photoLightboxImg').src = src;
+  document.getElementById('photoLightbox').classList.remove('hidden');
+}
+function closeLightbox(){
+  document.getElementById('photoLightbox').classList.add('hidden');
+}
+
+function resizeImageFile(file, maxDim){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w >= h){ if(w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.78));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function dataUrlToParts(dataUrl){
+  const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+  return { mimeType: match[1], base64Data: match[2] };
+}
+
+function isAuthError(message){
+  return (message || '').includes('รหัสผ่าน');
+}
+
+function ensureAccessCode(){
+  let code = localStorage.getItem(ACCESS_CODE_STORAGE_KEY);
+  if(!code){
+    code = (prompt('กรุณาใส่รหัสผ่านเข้าใช้งานระบบล็อคเกอร์ (ติดต่อ HR Operation หากไม่มีรหัส)') || '').trim();
+    if(code) localStorage.setItem(ACCESS_CODE_STORAGE_KEY, code);
+  }
+  return code;
+}
+
+function handleAuthError(message){
+  if(isAuthError(message)){
+    localStorage.removeItem(ACCESS_CODE_STORAGE_KEY);
+    alert('รหัสผ่านไม่ถูกต้อง กรุณารีเฟรชหน้านี้แล้วใส่รหัสผ่านใหม่อีกครั้งค่ะ');
+  }
+}
+
+async function uploadPhotoToServer(dataUrl, filename){
+  const { mimeType, base64Data } = dataUrlToParts(dataUrl);
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'uploadPhoto', filename, mimeType, base64Data, code: accessCode }),
+  });
+  const result = await res.json();
+  if(!result.success){
+    handleAuthError(result.error);
+    throw new Error(result.error || 'อัปโหลดรูปไม่สำเร็จ');
+  }
+  return result.url;
+}
+
+function wirePhotoUpload(inputId, previewId, removeBtnId, setPending){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const wrap = input.parentElement;
+
+  function bindRemove(){
+    const btn = document.getElementById(removeBtnId);
+    if(!btn) return;
+    btn.addEventListener('click', ()=>{
+      setPending(null);
+      document.getElementById(previewId).innerHTML = 'ไม่มีรูป';
+      btn.remove();
+    });
+  }
+  function ensureRemoveBtn(){
+    if(document.getElementById(removeBtnId)) return;
+    wrap.insertAdjacentHTML('beforeend', `<button type="button" class="photo-remove-btn" id="${removeBtnId}">ลบรูป</button>`);
+    bindRemove();
+  }
+
+  input.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const dataUrl = await resizeImageFile(file, 240);
+      document.getElementById(previewId).innerHTML = `<img src="${dataUrl}" alt="" style="opacity:.5;" onclick="openLightbox('${dataUrl}')">กำลังอัปโหลด...`;
+      ensureRemoveBtn();
+
+      const uploadPromise = uploadPhotoToServer(dataUrl, file.name)
+        .then(url=>{
+          setPending(url);
+          document.getElementById(previewId).innerHTML = `<img src="${url}" alt="" onclick="openLightbox('${url}')">`;
+        })
+        .catch(err=>{
+          console.error(err);
+          alert('ไม่สามารถอัปโหลดรูปขึ้น Google Drive ได้ กรุณาลองใหม่อีกครั้งค่ะ');
+          setPending(undefined);
+          document.getElementById(previewId).innerHTML = 'ไม่มีรูป';
+        });
+      activePhotoUploads.push(uploadPromise);
+    }catch(err){
+      console.error(err);
+      alert('ไม่สามารถโหลดรูปได้ กรุณาลองใหม่อีกครั้งค่ะ');
+    }
+  });
+  bindRemove();
+}
+
+const RETURN_REASONS = [
+  { value:'resign',        label:'ลาออก / พ้นสภาพพนักงาน' },
+  { value:'contract_end',  label:'สิ้นสุดสัญญาจ้าง' },
+  { value:'transfer',      label:'ย้ายแผนก / ย้ายไซต์งาน' },
+  { value:'change_locker', label:'เปลี่ยน / ย้ายไปใช้ล็อคเกอร์อื่น' },
+  { value:'locker_issue',  label:'ตู้ชำรุด ต้องนำออกจากการใช้งาน' },
+  { value:'other',         label:'อื่นๆ' },
+];
+function reasonLabel(v){
+  const r = RETURN_REASONS.find(x=>x.value===v);
+  return r ? r.label : (v || '-');
+}
+
+const NOTE_OPTIONS = [
+  'กำลังดำเนินการเรื่องกุญแจ',
+  'รับกุญแจแล้ว',
+  'คืนกุญแจแล้ว',
+];
+
+const MAINTENANCE_CASES = [
+  'บานพับ/ประตูชำรุด',
+  'กุญแจหาย',
+  'แม่กุญแจเสีย',
+  'ตู้เป็นสนิม/ผุ',
+  'ตู้บุบ/เสียหาย',
+  'อื่นๆ',
+];
+
+const UNUSABLE_CASES = [
+  'ตู้ชำรุดถาวร ซ่อมไม่ได้',
+  'ถูกไฟไหม้ / เสียหายรุนแรง',
+  'ยกเลิกใช้งานถาวร',
+  'อื่นๆ',
+];
+
+function uid(){ return 'lk_' + Math.random().toString(36).slice(2,10); }
+
+async function loadData(){
+  try{
+    const url = APPS_SCRIPT_URL + '?code=' + encodeURIComponent(accessCode || '');
+    const res = await fetch(url, { method: 'GET' });
+    const parsed = await res.json();
+    if(parsed.success === false){
+      handleAuthError(parsed.error);
+      throw new Error(parsed.error || 'โหลดข้อมูลไม่สำเร็จ');
+    }
+    lockers = parsed.lockers || [];
+    zoneList = parsed.zones || [...new Set(lockers.map(l=>l.zone))];
+  }catch(e){
+    console.error('Load error:', e);
+    document.getElementById('loading').textContent = 'ไม่สามารถโหลดข้อมูลได้: ' + e.message;
+    return;
+  }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('lockerGrid').style.display = 'grid';
+  buildZoneTabs();
+  render();
+}
+
+async function saveData(){
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ zones: zoneList, lockers, code: accessCode }),
+    });
+    const result = await res.json();
+    if(!result.success){
+      console.error('บันทึกข้อมูลไม่สำเร็จ:', result.error);
+      handleAuthError(result.error);
+      alert('บันทึกข้อมูลไม่สำเร็จ: ' + (result.error || ''));
+    }
+  }catch(e){
+    console.error('Save error:', e);
+    alert('บันทึกข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่อีกครั้งค่ะ');
+  }
+}
+
+function buildZoneTabs(){
+  if(currentZone !== '__overview__' && !zoneList.includes(currentZone)){
+    currentZone = '__overview__';
+  }
+  const tabsEl = document.getElementById('zoneTabs');
+  let html = `<button class="zone-tab ${currentZone==='__overview__' ? 'active' : ''}" data-zone="__overview__">ภาพรวมทั้งหมด</button>`;
+  html += zoneList.map(z=>
+    `<button class="zone-tab ${z===currentZone ? 'active' : ''}" data-zone="${z}">${z}</button>`
+  ).join('');
+  html += `<button type="button" class="zone-tab import-tab" id="importExcelBtn">📥 นำเข้า Excel</button>`;
+  html += `<button type="button" class="zone-tab manage-tab" id="manageZonesBtn">⚙ จัดการโซน</button>`;
+  tabsEl.innerHTML = html;
+  tabsEl.querySelectorAll('.zone-tab[data-zone]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentZone = btn.dataset.zone;
+      buildZoneTabs();
+      render();
+    });
+  });
+  document.getElementById('manageZonesBtn').addEventListener('click', openManageZonesPanel);
+  document.getElementById('importExcelBtn').addEventListener('click', openImportExcelPanel);
+}
+
+function switchToZone(zoneName){
+  currentZone = zoneName;
+  buildZoneTabs();
+  render();
+}
+
+function goToLockerDetail(id){
+  const l = lockers.find(x=>x.id===id);
+  if(!l) return;
+  switchToZone(l.zone);
+  openEditPanel(id);
+}
+
+function statusLabel(s){
+  if(s === 'available') return 'ว่าง';
+  if(s === 'assigned') return 'ใช้งานแล้ว';
+  if(s === 'maintenance') return 'ซ่อมบำรุง';
+  if(s === 'unusable') return 'ใช้งานไม่ได้';
+  return s;
+}
+
+const STATUS_COLORS = { available:'#059669', assigned:'#2563eb', maintenance:'#eab308', unusable:'#dc2626' };
+
+function shortZoneLabel(z){
+  const m = z.match(/โซน\s*([A-Za-zก-๙0-9]+)/);
+  if(m) return m[1];
+  if(z.includes('_')) return z.split('_')[0];
+  return z.length > 14 ? z.slice(0,14)+'…' : z;
+}
+
+function niceCeil(v){
+  if(v<=5) return 5;
+  if(v<=10) return 10;
+  if(v<=15) return 15;
+  if(v<=20) return 20;
+  if(v<=25) return 25;
+  if(v<=30) return 30;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v/magnitude)*magnitude;
+}
+
+function renderChartLegend(statusFilter){
+  const legendEl = document.getElementById('chartLegend');
+  const keys = statusFilter ? [statusFilter] : ['available','assigned','maintenance','unusable'];
+  legendEl.innerHTML = keys.map(k=>
+    `<span class="legend-item"><span class="legend-swatch" style="background:${STATUS_COLORS[k]}"></span>${statusLabel(k)}</span>`
+  ).join('');
+}
+
+function buildBarChart(zones, statusFilter){
+  const data = zones.map(z=>{
+    const zl = lockers.filter(l=>l.zone===z);
+    return {
+      zone: z,
+      shortLabel: shortZoneLabel(z),
+      available: zl.filter(l=>l.status==='available').length,
+      assigned: zl.filter(l=>l.status==='assigned').length,
+      maintenance: zl.filter(l=>l.status==='maintenance').length,
+      unusable: zl.filter(l=>l.status==='unusable').length,
+      total: zl.length
+    };
+  });
+
+  const W = 640, H = 250;
+  const marginLeft = 44, marginRight = 20, marginTop = 24, marginBottom = 34;
+  const chartW = W - marginLeft - marginRight;
+  const chartH = H - marginTop - marginBottom;
+
+  const maxVal = statusFilter
+    ? Math.max(1, ...data.map(d=>d[statusFilter]))
+    : Math.max(1, ...data.map(d=>d.total));
+  const niceMax = niceCeil(maxVal);
+
+  const n = Math.max(1, data.length);
+  const slot = chartW / n;
+  const barWidth = Math.min(64, slot * 0.5);
+
+  const steps = 4;
+  let gridSvg = '';
+  for(let i=0;i<=steps;i++){
+    const val = Math.round(niceMax * i / steps);
+    const y = marginTop + chartH - (chartH * i/steps);
+    gridSvg += `<line x1="${marginLeft}" y1="${y}" x2="${W-marginRight}" y2="${y}" stroke="#eef0f6" stroke-width="1" />`;
+    gridSvg += `<text x="${marginLeft-8}" y="${y+4}" font-size="11" fill="#64748b" text-anchor="end">${val}</text>`;
+  }
+
+  let barsSvg = '';
+  data.forEach((d,i)=>{
+    const cx = marginLeft + slot*i + slot/2;
+    const x = cx - barWidth/2;
+
+    if(statusFilter){
+      const val = d[statusFilter];
+      const h = niceMax > 0 ? (val/niceMax)*chartH : 0;
+      const y = marginTop + chartH - h;
+      barsSvg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${h.toFixed(1)}" fill="${STATUS_COLORS[statusFilter]}" rx="4"><title>${d.zone}: ${statusLabel(statusFilter)} ${val}</title></rect>`;
+      if(val>0) barsSvg += `<text x="${cx.toFixed(1)}" y="${(y-8).toFixed(1)}" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">${val}</text>`;
+    } else {
+      const segments = [
+        {key:'available', val:d.available},
+        {key:'assigned', val:d.assigned},
+        {key:'maintenance', val:d.maintenance},
+        {key:'unusable', val:d.unusable},
+      ];
+      let yCursor = marginTop + chartH;
+      segments.forEach(seg=>{
+        const h = niceMax>0 ? (seg.val/niceMax)*chartH : 0;
+        yCursor -= h;
+        if(seg.val>0){
+          barsSvg += `<rect x="${x.toFixed(1)}" y="${yCursor.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${h.toFixed(1)}" fill="${STATUS_COLORS[seg.key]}"><title>${d.zone}: ${statusLabel(seg.key)} ${seg.val}</title></rect>`;
+        }
+      });
+      barsSvg += `<text x="${cx.toFixed(1)}" y="${(yCursor-8).toFixed(1)}" font-size="12" font-weight="700" fill="#0f172a" text-anchor="middle">${d.total}</text>`;
+    }
+
+    barsSvg += `<text x="${cx.toFixed(1)}" y="${H-marginBottom+18}" font-size="12" font-weight="600" fill="#0f172a" text-anchor="middle">${d.shortLabel}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
+    ${gridSvg}
+    <line x1="${marginLeft}" y1="${marginTop+chartH}" x2="${W-marginRight}" y2="${marginTop+chartH}" stroke="#cbd5e1" stroke-width="1.5" />
+    ${barsSvg}
+  </svg>`;
+}
+
+function buildPieChart(statusFilter){
+  const total = lockers.length;
+  const counts = {
+    available: lockers.filter(l=>l.status==='available').length,
+    assigned: lockers.filter(l=>l.status==='assigned').length,
+    maintenance: lockers.filter(l=>l.status==='maintenance').length,
+    unusable: lockers.filter(l=>l.status==='unusable').length,
+  };
+
+  const size = 180, radius = 68, stroke = 26;
+  const circumference = 2 * Math.PI * radius;
+  const cx = size/2, cy = size/2;
+
+  let segments;
+  if(statusFilter){
+    const val = counts[statusFilter];
+    segments = [
+      { key: statusFilter, val, color: STATUS_COLORS[statusFilter] },
+      { key: '__rest__', val: total - val, color: '#e2e8f0' },
+    ];
+  } else {
+    segments = ['available','assigned','maintenance','unusable'].map(key => ({ key, val: counts[key], color: STATUS_COLORS[key] }));
+  }
+
+  let offsetAccum = 0;
+  let circles = '';
+  segments.forEach(seg=>{
+    const frac = total > 0 ? seg.val/total : 0;
+    const dash = frac * circumference;
+    const gap = circumference - dash;
+    if(seg.val > 0){
+      const label = seg.key === '__rest__' ? 'อื่นๆ' : statusLabel(seg.key);
+      circles += `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${seg.color}" stroke-width="${stroke}" stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}" stroke-dashoffset="${(-offsetAccum).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"><title>${label}: ${seg.val} (${Math.round(frac*100)}%)</title></circle>`;
+    }
+    offsetAccum += dash;
+  });
+
+  const centerVal = statusFilter ? counts[statusFilter] : total;
+  const centerLabel = statusFilter ? statusLabel(statusFilter) : 'ตู้ทั้งหมด';
+
+  const svg = `<svg viewBox="0 0 ${size} ${size}" style="width:100%;max-width:170px;height:auto;display:block;margin:0 auto;">
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#eef0f6" stroke-width="${stroke}"></circle>
+    ${circles}
+    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="24" font-weight="800" fill="#0f172a">${centerVal}</text>
+    <text x="${cx}" y="${cy+18}" text-anchor="middle" font-size="11" fill="#64748b">${centerLabel}</text>
+  </svg>`;
+
+  const legendKeys = statusFilter ? [statusFilter] : ['available','assigned','maintenance','unusable'];
+  const legend = legendKeys.map(key=>{
+    const val = counts[key];
+    const pct = total > 0 ? Math.round(val/total*100) : 0;
+    return `
+      <div class="pie-legend-item">
+        <span class="legend-swatch" style="background:${STATUS_COLORS[key]}"></span>
+        <span class="pie-legend-label">${statusLabel(key)}</span>
+        <span class="pie-legend-value">${val} ตู้ · ${pct}%</span>
+      </div>`;
+  }).join('');
+
+  return `<div class="pie-chart-layout">
+    <div class="pie-svg-wrap">${svg}</div>
+    <div class="pie-legend-list">${legend}</div>
+  </div>`;
+}
+
+function render(){
+  if(currentZone === '__overview__'){
+    document.getElementById('zoneView').style.display = 'none';
+    document.getElementById('overviewView').style.display = 'block';
+    renderOverview();
+    return;
+  }
+  document.getElementById('zoneView').style.display = 'block';
+  document.getElementById('overviewView').style.display = 'none';
+
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const status = document.getElementById('statusFilterChips').dataset.value;
+
+  const zoneLockers = lockers.filter(l => l.zone === currentZone);
+
+  const filtered = zoneLockers.filter(l=>{
+    if(status && l.status !== status) return false;
+    if(q){
+      const hay = [l.number, l.empName, l.empId, l.department].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('statTotal').textContent = zoneLockers.length;
+  document.getElementById('statAvailable').textContent = zoneLockers.filter(l=>l.status==='available').length;
+  document.getElementById('statAssigned').textContent = zoneLockers.filter(l=>l.status==='assigned').length;
+  document.getElementById('statMaintenance').textContent = zoneLockers.filter(l=>l.status==='maintenance').length;
+  document.getElementById('statUnusable').textContent = zoneLockers.filter(l=>l.status==='unusable').length;
+
+  const grid = document.getElementById('lockerGrid');
+  const emptyMsg = document.getElementById('emptyMsg');
+
+  if(filtered.length === 0){
+    grid.style.display = 'none';
+    emptyMsg.style.display = 'block';
+    return;
+  }
+  grid.style.display = 'grid';
+  emptyMsg.style.display = 'none';
+
+  grid.innerHTML = filtered.map(l=>{
+    const empIdLine = (l.status === 'assigned' && l.empId) ? `<div class="who-empid">${l.empId}</div>` : '';
+    const who = l.status === 'assigned' ? (l.empName + (l.department ? ' · '+l.department : '')) :
+                l.status === 'maintenance' ? (l.maintenanceCase || 'ซ่อมบำรุง') :
+                l.status === 'unusable' ? (l.unusableCase || 'ใช้งานไม่ได้') : 'ว่าง';
+    let photoSrc = null;
+    if(l.status === 'assigned' && l.empPhoto) photoSrc = l.empPhoto;
+    else if((l.status === 'maintenance' || l.status === 'unusable') && l.issuePhoto) photoSrc = l.issuePhoto;
+    const hasCableLock = (l.note || '').trim() === 'สายยู';
+    return `
+      <div class="locker ${l.status}" data-id="${l.id}">
+        <div class="vents"><span></span><span></span><span></span></div>
+        <div class="handle"></div>
+        ${hasCableLock ? '<div class="cable-lock-dot" title="มีสายยู"></div>' : ''}
+        <div class="num">${l.number}</div>
+        <div class="who">${empIdLine}${who}</div>
+        ${photoSrc ? `<div class="locker-hover-preview"><img src="${photoSrc}" alt=""></div>` : ''}
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.locker').forEach(el=>{
+    el.addEventListener('click', ()=> openEditPanel(el.dataset.id));
+  });
+}
+
+function renderOverview(){
+  const q = document.getElementById('ovSearch').value.trim().toLowerCase();
+  const status = document.getElementById('ovStatusFilterChips').dataset.value;
+
+  document.getElementById('ovStatTotal').textContent = lockers.length;
+  document.getElementById('ovStatAvailable').textContent = lockers.filter(l=>l.status==='available').length;
+  document.getElementById('ovStatAssigned').textContent = lockers.filter(l=>l.status==='assigned').length;
+  document.getElementById('ovStatMaintenance').textContent = lockers.filter(l=>l.status==='maintenance').length;
+  document.getElementById('ovStatUnusable').textContent = lockers.filter(l=>l.status==='unusable').length;
+
+  const zones = zoneList;
+  const cardsEl = document.getElementById('zoneSummaryCards');
+  cardsEl.innerHTML = zones.map(z=>{
+    const zl = lockers.filter(l=>l.zone===z);
+    const avail = zl.filter(l=>l.status==='available').length;
+    const assigned = zl.filter(l=>l.status==='assigned').length;
+    const maint = zl.filter(l=>l.status==='maintenance').length;
+    const unusable = zl.filter(l=>l.status==='unusable').length;
+    return `
+      <div class="zone-card" data-zone="${z}">
+        <h3>${z}</h3>
+        <div class="mini-stats">
+          <div><b>${zl.length}</b>ทั้งหมด</div>
+          <div><b>${avail}</b>ว่าง</div>
+          <div><b>${assigned}</b>ใช้งาน</div>
+          <div><b>${maint}</b>ซ่อมบำรุง</div>
+          <div><b>${unusable}</b>ใช้งานไม่ได้</div>
+        </div>
+      </div>`;
+  }).join('');
+  cardsEl.querySelectorAll('.zone-card').forEach(card=>{
+    card.addEventListener('click', ()=> switchToZone(card.dataset.zone));
+  });
+
+  document.getElementById('barChartWrap').innerHTML = buildBarChart(zones, status);
+  renderChartLegend(status);
+  document.getElementById('pieChartWrap').innerHTML = buildPieChart(status);
+
+  const filtered = lockers.filter(l=>{
+    if(status && l.status !== status) return false;
+    if(q){
+      const hay = [l.number, l.empName, l.empId, l.department, l.zone].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const table = document.getElementById('overviewTable');
+  const tbody = document.getElementById('overviewTableBody');
+  const emptyMsg = document.getElementById('ovEmptyMsg');
+
+  if(filtered.length === 0){
+    table.style.display = 'none';
+    emptyMsg.style.display = 'block';
+    return;
+  }
+  table.style.display = 'table';
+  emptyMsg.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(l=>{
+    const who = l.status === 'assigned'
+      ? `${l.empId ? `<div class="ov-empid">${l.empId}</div>` : ''}${l.empName || '-'}`
+      : (l.status === 'maintenance' ? (l.maintenanceCase || 'ซ่อมบำรุง') : (l.status === 'unusable' ? (l.unusableCase || 'ใช้งานไม่ได้') : '-'));
+    const dept = l.status === 'assigned' ? (l.department || '-') : '-';
+    return `
+      <tr>
+        <td><strong>${l.number}</strong></td>
+        <td>${l.zone}</td>
+        <td><span class="ov-status ${l.status}">${statusLabel(l.status)}</span></td>
+        <td>${who}</td>
+        <td>${dept}</td>
+        <td><button class="ov-link" data-id="${l.id}">ดูรายละเอียด</button></td>
+      </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.ov-link').forEach(btn=>{
+    btn.addEventListener('click', ()=> goToLockerDetail(btn.dataset.id));
+  });
+}
+
+function openOverlay(){ document.getElementById('overlay').classList.remove('hidden'); }
+function closeOverlay(){ document.getElementById('overlay').classList.add('hidden'); currentLockerId=null; mode=null; }
+
+function openEditPanel(id){
+  currentLockerId = id;
+  mode = 'edit';
+  const l = lockers.find(x=>x.id===id);
+  const panel = document.getElementById('panelContent');
+
+  panel.innerHTML = `
+    <h2>${l.number}</h2>
+    <div class="sub">${l.zone}</div>
+    <span class="status-badge ${l.status}">${statusLabel(l.status)}</span>
+
+    <div class="field">
+      <label>หมายเลขล็อคเกอร์</label>
+      <input id="f_number" type="text" value="${l.number}" placeholder="เช่น A-16">
+    </div>
+    <div class="field">
+      <label>ชื่อ-นามสกุลพนักงาน</label>
+      <input id="f_empName" type="text" value="${l.empName || ''}" placeholder="เช่น สมชาย ใจดี">
+    </div>
+    <div class="field">
+      <label>รหัสพนักงาน</label>
+      <input id="f_empId" type="text" value="${l.empId || ''}" placeholder="เช่น EMP-00231">
+    </div>
+    <div class="field">
+      <label>แผนก</label>
+      <input id="f_department" type="text" value="${l.department || ''}" placeholder="เช่น ฝ่ายผลิต">
+    </div>
+    <div class="field">
+      <label>วันที่จัดสรร</label>
+      <input id="f_assignedDate" type="date" value="${l.assignedDate || ''}">
+    </div>
+    <div class="field">
+      <label>รูปพนักงาน</label>
+      <div class="photo-upload-row">
+        <div class="photo-preview" id="empPhotoPreview">${l.empPhoto ? `<img src="${l.empPhoto}" alt="" onclick="openLightbox('${l.empPhoto}')">` : 'ไม่มีรูป'}</div>
+        <div class="photo-upload-actions">
+          <label class="photo-upload-btn" for="f_empPhoto">+ เพิ่มรูปพนักงาน</label>
+          <input type="file" id="f_empPhoto" accept="image/*" style="display:none;">
+          ${l.empPhoto ? '<button type="button" class="photo-remove-btn" id="removeEmpPhotoBtn">ลบรูป</button>' : ''}
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>สถานะพิเศษของตู้</label>
+      <div class="note-chip-group" id="specialStatusChipGroup" data-value="${l.status==='maintenance' ? 'maintenance' : l.status==='unusable' ? 'unusable' : ''}">
+        <button type="button" class="note-chip ${l.status!=='maintenance' && l.status!=='unusable' ? 'active' : ''}" data-value="">ปกติ</button>
+        <button type="button" class="note-chip ${l.status==='maintenance' ? 'active' : ''}" data-value="maintenance">ซ่อมบำรุง</button>
+        <button type="button" class="note-chip ${l.status==='unusable' ? 'active' : ''}" data-value="unusable">ใช้งานไม่ได้</button>
+      </div>
+    </div>
+    <div class="field" id="maintenanceCaseField" style="display:${l.status==='maintenance' ? 'block' : 'none'};">
+      <label>เคสในการแจ้งซ่อม</label>
+      <div class="note-chip-group" id="maintCaseChipGroup" data-value="${l.maintenanceCase || ''}">
+        ${MAINTENANCE_CASES.map(c => `<button type="button" class="note-chip ${l.maintenanceCase===c ? 'active' : ''}" data-value="${c}">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="field" id="unusableCaseField" style="display:${l.status==='unusable' ? 'block' : 'none'};">
+      <label>เหตุผลที่ใช้งานไม่ได้</label>
+      <div class="note-chip-group" id="unusableCaseChipGroup" data-value="${l.unusableCase || ''}">
+        ${UNUSABLE_CASES.map(c => `<button type="button" class="note-chip ${l.unusableCase===c ? 'active' : ''}" data-value="${c}">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="field" id="issuePhotoField" style="display:${(l.status==='maintenance' || l.status==='unusable') ? 'block' : 'none'};">
+      <label>รูปประกอบปัญหา</label>
+      <div class="photo-upload-row">
+        <div class="photo-preview" id="issuePhotoPreview">${l.issuePhoto ? `<img src="${l.issuePhoto}" alt="" onclick="openLightbox('${l.issuePhoto}')">` : 'ไม่มีรูป'}</div>
+        <div class="photo-upload-actions">
+          <label class="photo-upload-btn" for="f_issuePhoto">+ เพิ่มรูปแจ้งซ่อม</label>
+          <input type="file" id="f_issuePhoto" accept="image/*" style="display:none;">
+          ${l.issuePhoto ? '<button type="button" class="photo-remove-btn" id="removeIssuePhotoBtn">ลบรูป</button>' : ''}
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>หมายเหตุ</label>
+      <div class="note-chip-group" id="noteChipGroup" data-value="${l.note && NOTE_OPTIONS.includes(l.note) ? l.note : (l.note ? '__other__' : '')}">
+        ${NOTE_OPTIONS.map(opt => `<button type="button" class="note-chip ${l.note===opt ? 'active' : ''}" data-value="${opt}">${opt}</button>`).join('')}
+        <button type="button" class="note-chip ${l.note && !NOTE_OPTIONS.includes(l.note) ? 'active' : ''}" data-value="__other__">อื่นๆ (ระบุเอง)</button>
+      </div>
+      <input id="f_note_other" type="text" value="${l.note && !NOTE_OPTIONS.includes(l.note) ? l.note : ''}" placeholder="ระบุหมายเหตุเอง" style="margin-top:8px;${(l.note && !NOTE_OPTIONS.includes(l.note)) ? '' : 'display:none;'}">
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn btn-primary" id="saveBtn">บันทึก</button>
+      <button class="btn btn-ghost" id="cancelBtn">ยกเลิก</button>
+    </div>
+    ${l.status !== 'available' || l.empName ? '<div class="panel-actions"><button class="btn btn-danger" id="returnBtn">คืนล็อคเกอร์ / เลิกใช้งาน...</button></div>' : ''}
+    <div class="panel-actions">
+      <button class="btn btn-danger" id="deleteLockerBtn">ลบล็อคเกอร์นี้ออกจากระบบ</button>
+    </div>
+    ${renderHistory(l)}
+  `;
+
+  pendingEmpPhoto = undefined;
+  pendingIssuePhoto = undefined;
+  activePhotoUploads = [];
+
+  document.getElementById('saveBtn').addEventListener('click', saveLockerFromPanel);
+  document.getElementById('cancelBtn').addEventListener('click', closeOverlay);
+  document.getElementById('deleteLockerBtn').addEventListener('click', ()=> deleteLocker(id));
+  const returnBtn = document.getElementById('returnBtn');
+  if(returnBtn) returnBtn.addEventListener('click', ()=> openReturnForm(id));
+  document.querySelectorAll('#specialStatusChipGroup .note-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#specialStatusChipGroup .note-chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('specialStatusChipGroup').dataset.value = btn.dataset.value;
+      document.getElementById('maintenanceCaseField').style.display = btn.dataset.value === 'maintenance' ? 'block' : 'none';
+      document.getElementById('unusableCaseField').style.display = btn.dataset.value === 'unusable' ? 'block' : 'none';
+      document.getElementById('issuePhotoField').style.display = (btn.dataset.value === 'maintenance' || btn.dataset.value === 'unusable') ? 'block' : 'none';
+    });
+  });
+  document.querySelectorAll('#maintCaseChipGroup .note-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#maintCaseChipGroup .note-chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('maintCaseChipGroup').dataset.value = btn.dataset.value;
+    });
+  });
+  document.querySelectorAll('#unusableCaseChipGroup .note-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#unusableCaseChipGroup .note-chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('unusableCaseChipGroup').dataset.value = btn.dataset.value;
+    });
+  });
+  wirePhotoUpload('f_empPhoto', 'empPhotoPreview', 'removeEmpPhotoBtn', (v)=>{ pendingEmpPhoto = v; });
+  wirePhotoUpload('f_issuePhoto', 'issuePhotoPreview', 'removeIssuePhotoBtn', (v)=>{ pendingIssuePhoto = v; });
+  document.querySelectorAll('#noteChipGroup .note-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#noteChipGroup .note-chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('noteChipGroup').dataset.value = btn.dataset.value;
+      document.getElementById('f_note_other').style.display = btn.dataset.value === '__other__' ? 'block' : 'none';
+    });
+  });
+
+  openOverlay();
+}
+
+function renderHistory(l){
+  if(!l.history || l.history.length === 0) return '';
+  const items = l.history.slice().reverse().map(h => `
+    <div class="history-item">
+      <div class="history-item-top">
+        <div>
+          <div style="font-size:10.5px;color:var(--text-muted);font-weight:600;">${h.empId || '-'}</div>
+          <strong>${h.empName || '-'}</strong>
+        </div>
+        <span class="history-date">${h.assignedDate || '-'} – ${h.returnDate || '-'}</span>
+      </div>
+      <div class="history-item-sub">
+        ${reasonLabel(h.reason)} · กุญแจ: ${h.keyReturned ? 'คืนแล้ว' : '<span class="key-warning">ยังไม่คืน</span>'}
+      </div>
+      ${h.note ? `<div class="history-item-note">${h.note}</div>` : ''}
+    </div>
+  `).join('');
+  return `
+    <div class="history-section">
+      <div class="history-title">ประวัติการใช้งานล็อคเกอร์ (${l.history.length} ครั้ง)</div>
+      ${items}
+    </div>
+  `;
+}
+
+function openReturnForm(id){
+  currentLockerId = id;
+  mode = 'return';
+  const l = lockers.find(x=>x.id===id);
+  const panel = document.getElementById('panelContent');
+  const today = new Date().toISOString().slice(0,10);
+
+  panel.innerHTML = `
+    <h2>คืนล็อคเกอร์ ${l.number}</h2>
+    <div class="sub">${l.zone}</div>
+
+    <div class="return-current">
+      <div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:2px;">${l.empId || '-'}</div>
+      <strong>${l.empName || '-'}</strong>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px;">
+        ${l.department || '-'} · เริ่มใช้ ${l.assignedDate || '-'}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>เหตุผลการเลิกใช้ / เปลี่ยนแปลง</label>
+      <div class="note-chip-group" id="reasonChipGroup" data-value="">
+        ${RETURN_REASONS.map(r=>`<button type="button" class="note-chip" data-value="${r.value}">${r.label}</button>`).join('')}
+      </div>
+    </div>
+    <div class="field">
+      <label>วันที่คืนล็อคเกอร์</label>
+      <input id="r_date" type="date" value="${today}">
+    </div>
+    <div class="checkline">
+      <input id="r_keyReturned" type="checkbox" checked>
+      <label for="r_keyReturned" style="margin:0;font-weight:400;">คืนกุญแจแล้ว</label>
+    </div>
+    <div class="field">
+      <label>รายละเอียดเพิ่มเติม</label>
+      <input id="r_note" type="text" placeholder="เช่น ย้ายไปแผนกคลังสินค้า, ส่งกุญแจคืนที่ HR แล้ว">
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn btn-return" id="confirmReturnBtn">ยืนยันคืนล็อคเกอร์</button>
+      <button class="btn btn-ghost" id="backBtn">ย้อนกลับ</button>
+    </div>
+  `;
+
+  document.getElementById('confirmReturnBtn').addEventListener('click', confirmReturn);
+  document.getElementById('backBtn').addEventListener('click', ()=> openEditPanel(id));
+  document.querySelectorAll('#reasonChipGroup .note-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#reasonChipGroup .note-chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('reasonChipGroup').dataset.value = btn.dataset.value;
+    });
+  });
+  openOverlay();
+}
+
+async function confirmReturn(){
+  const l = lockers.find(x=>x.id===currentLockerId);
+  const reason = document.getElementById('reasonChipGroup').dataset.value;
+  const returnDate = document.getElementById('r_date').value;
+  const keyReturned = document.getElementById('r_keyReturned').checked;
+  const note = document.getElementById('r_note').value.trim();
+
+  if(!reason){ alert('กรุณาเลือกเหตุผลการเลิกใช้ล็อคเกอร์ค่ะ'); return; }
+  if(!returnDate){ alert('กรุณาระบุวันที่คืนล็อคเกอร์ค่ะ'); return; }
+
+  if(!l.history) l.history = [];
+  l.history.push({
+    empName: l.empName,
+    empId: l.empId,
+    department: l.department,
+    assignedDate: l.assignedDate,
+    returnDate,
+    reason,
+    keyReturned,
+    note: note || null,
+    recordedAt: new Date().toISOString()
+  });
+
+  l.status = 'available';
+  l.empName = null;
+  l.empId = null;
+  l.department = null;
+  l.assignedDate = null;
+  l.note = null;
+  l.maintenanceCase = null;
+  l.unusableCase = null;
+  l.empPhoto = null;
+
+  await saveData();
+  render();
+  closeOverlay();
+}
+
+function openNewLockerPanel(){
+  currentLockerId = null;
+  mode = 'new';
+  const panel = document.getElementById('panelContent');
+  panel.innerHTML = `
+    <h2>เพิ่มล็อคเกอร์ใหม่</h2>
+    <div class="sub">กรอกข้อมูลล็อคเกอร์ที่ต้องการเพิ่มเข้าระบบ</div>
+
+    <div class="field">
+      <label>หมายเลขล็อคเกอร์</label>
+      <input id="f_number" type="text" placeholder="เช่น A-16">
+    </div>
+    <div class="field">
+      <label>โซน / พื้นที่</label>
+      <input id="f_zone" type="text" value="${currentZone || ''}" placeholder="เช่น โซน A (ฝ่ายผลิต)" list="zoneOptions">
+      <datalist id="zoneOptions">
+        ${zoneList.map(z=>`<option value="${z}">`).join('')}
+      </datalist>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:5px;">พิมพ์ชื่อโซนใหม่เพื่อสร้างหน้าแดชบอร์ดโซนใหม่โดยอัตโนมัติ</div>
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn btn-primary" id="createBtn">เพิ่มล็อคเกอร์</button>
+      <button class="btn btn-ghost" id="cancelBtn">ยกเลิก</button>
+    </div>
+  `;
+  document.getElementById('createBtn').addEventListener('click', createLocker);
+  document.getElementById('cancelBtn').addEventListener('click', closeOverlay);
+  openOverlay();
+}
+
+async function saveLockerFromPanel(){
+  if(activePhotoUploads.length){
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'กำลังอัปโหลดรูป...';
+    await Promise.all(activePhotoUploads);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'บันทึก';
+  }
+
+  const l = lockers.find(x=>x.id===currentLockerId);
+  const number = document.getElementById('f_number').value.trim();
+  const empName = document.getElementById('f_empName').value.trim();
+  const empId = document.getElementById('f_empId').value.trim();
+  const department = document.getElementById('f_department').value.trim();
+  const assignedDate = document.getElementById('f_assignedDate').value;
+  const specialStatus = document.getElementById('specialStatusChipGroup').dataset.value || '';
+  const isMaintenance = specialStatus === 'maintenance';
+  const isUnusable = specialStatus === 'unusable';
+  const noteSelectVal = document.getElementById('noteChipGroup').dataset.value || '';
+  const note = noteSelectVal === '__other__'
+    ? document.getElementById('f_note_other').value.trim()
+    : noteSelectVal;
+
+  if(!number){
+    alert('กรุณากรอกหมายเลขล็อคเกอร์ค่ะ');
+    return;
+  }
+  const duplicate = lockers.find(x=>x.id!==l.id && x.zone===l.zone && x.number===number);
+  if(duplicate){
+    alert(`มีหมายเลขล็อคเกอร์ "${number}" อยู่แล้วในโซนนี้ กรุณาตั้งหมายเลขอื่นค่ะ`);
+    return;
+  }
+
+  if(l.status === 'assigned' && !empName && !isMaintenance && !isUnusable){
+    alert('หากต้องการเลิกใช้ล็อคเกอร์นี้ กรุณากดปุ่ม "คืนล็อคเกอร์ / เลิกใช้งาน..." เพื่อระบุเหตุผลและวันที่คืนให้ครบถ้วนค่ะ');
+    return;
+  }
+
+  l.number = number;
+  if(isMaintenance){
+    l.status = 'maintenance';
+  } else if(isUnusable){
+    l.status = 'unusable';
+  } else if(empName){
+    l.status = 'assigned';
+  } else {
+    l.status = 'available';
+  }
+  l.empName = empName || null;
+  l.empId = empId || null;
+  l.department = department || null;
+  l.assignedDate = assignedDate || null;
+  l.note = note || null;
+  l.maintenanceCase = isMaintenance ? (document.getElementById('maintCaseChipGroup').dataset.value || null) : null;
+  l.unusableCase = isUnusable ? (document.getElementById('unusableCaseChipGroup').dataset.value || null) : null;
+  if(pendingEmpPhoto !== undefined) l.empPhoto = pendingEmpPhoto;
+  if(pendingIssuePhoto !== undefined) l.issuePhoto = pendingIssuePhoto;
+
+  await saveData();
+  render();
+  closeOverlay();
+}
+
+async function deleteLocker(id){
+  const l = lockers.find(x=>x.id===id);
+  if(!l) return;
+
+  let msg = `ต้องการลบล็อคเกอร์ ${l.number} (${l.zone}) ออกจากระบบใช่หรือไม่คะ?`;
+  if(l.status === 'assigned' && l.empName){
+    msg += `\n\nคำเตือน: ล็อคเกอร์นี้กำลังใช้งานโดย ${l.empName} (${l.empId || '-'}) อยู่ในขณะนี้`;
+  }
+  if(l.history && l.history.length){
+    msg += `\n\nประวัติการใช้งานเดิม ${l.history.length} รายการของล็อคเกอร์นี้จะถูกลบไปด้วย และไม่สามารถกู้คืนได้`;
+  }
+
+  const ok = confirm(msg);
+  if(!ok) return;
+
+  lockers = lockers.filter(x=>x.id!==id);
+  await saveData();
+  buildZoneTabs();
+  render();
+  closeOverlay();
+}
+
+async function createLocker(){
+  const number = document.getElementById('f_number').value.trim();
+  const zone = document.getElementById('f_zone').value.trim();
+  if(!number || !zone){ alert('กรุณากรอกหมายเลขล็อคเกอร์และโซนให้ครบค่ะ'); return; }
+  const duplicate = lockers.find(x=>x.zone===zone && x.number===number);
+  if(duplicate){
+    alert(`มีหมายเลขล็อคเกอร์ "${number}" อยู่แล้วในโซน "${zone}" กรุณาตั้งหมายเลขอื่นค่ะ`);
+    return;
+  }
+  if(!zoneList.includes(zone)) zoneList.push(zone);
+  lockers.push({ id: uid(), zone, number, status:'available', empName:null, empId:null, department:null, assignedDate:null, note:null, history:[], maintenanceCase:null, unusableCase:null, empPhoto:null, issuePhoto:null });
+  currentZone = zone;
+  await saveData();
+  buildZoneTabs();
+  render();
+  closeOverlay();
+}
+
+function openManageZonesPanel(){
+  mode = 'manageZones';
+  zoneManageRows = zoneList.map(z => ({ original: z, value: z }));
+  const panel = document.getElementById('panelContent');
+  panel.innerHTML = `
+    <h2>จัดการโซน</h2>
+    <div class="sub">แก้ไขชื่อ เพิ่ม หรือลบโซนล็อคเกอร์</div>
+    <div id="zoneManageList"></div>
+    <button type="button" class="btn btn-ghost" id="addZoneRowBtn" style="width:100%;margin-top:6px;">+ เพิ่มโซนใหม่</button>
+    <div class="panel-actions" style="margin-top:20px;">
+      <button class="btn btn-primary" id="saveZonesBtn">บันทึกการเปลี่ยนแปลง</button>
+      <button class="btn btn-ghost" id="cancelZonesBtn">ยกเลิก</button>
+    </div>
+  `;
+  renderZoneManageRows();
+  document.getElementById('addZoneRowBtn').addEventListener('click', addZoneManageRow);
+  document.getElementById('saveZonesBtn').addEventListener('click', saveZoneChanges);
+  document.getElementById('cancelZonesBtn').addEventListener('click', closeOverlay);
+  openOverlay();
+}
+
+function renderZoneManageRows(){
+  const listEl = document.getElementById('zoneManageList');
+  const lastIdx = zoneManageRows.length - 1;
+  listEl.innerHTML = zoneManageRows.map((row, idx) => {
+    const count = row.original ? lockers.filter(l=>l.zone===row.original).length : 0;
+    const safeVal = (row.value || '').replace(/"/g,'&quot;');
+    return `
+      <div class="zone-manage-row" data-idx="${idx}">
+        <div class="zm-move-stack">
+          <button type="button" class="zm-move" data-idx="${idx}" data-dir="up" title="เลื่อนขึ้น" ${idx===0 ? 'disabled' : ''}>▲</button>
+          <button type="button" class="zm-move" data-idx="${idx}" data-dir="down" title="เลื่อนลง" ${idx===lastIdx ? 'disabled' : ''}>▼</button>
+        </div>
+        <input type="text" class="zm-input" value="${safeVal}" data-idx="${idx}" placeholder="ชื่อโซน">
+        <span class="zm-count">${count} ตู้</span>
+        <button type="button" class="zm-delete" data-idx="${idx}" title="ลบโซนนี้">✕</button>
+      </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.zm-input').forEach(inp=>{
+    inp.addEventListener('input', (e)=>{
+      zoneManageRows[Number(e.target.dataset.idx)].value = e.target.value;
+    });
+  });
+  listEl.querySelectorAll('.zm-move').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const idx = Number(e.currentTarget.dataset.idx);
+      const targetIdx = e.currentTarget.dataset.dir === 'up' ? idx - 1 : idx + 1;
+      if(targetIdx < 0 || targetIdx >= zoneManageRows.length) return;
+      [zoneManageRows[idx], zoneManageRows[targetIdx]] = [zoneManageRows[targetIdx], zoneManageRows[idx]];
+      renderZoneManageRows();
+    });
+  });
+  listEl.querySelectorAll('.zm-delete').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const idx = Number(e.currentTarget.dataset.idx);
+      const row = zoneManageRows[idx];
+      const count = row.original ? lockers.filter(l=>l.zone===row.original).length : 0;
+      if(count > 0){
+        const ok = confirm(`โซน "${row.value}" มีล็อคเกอร์ ${count} ตู้อยู่ หากลบโซนนี้ ล็อคเกอร์ทั้งหมดในโซนจะถูกลบไปด้วย ต้องการดำเนินการต่อหรือไม่?`);
+        if(!ok) return;
+      }
+      zoneManageRows.splice(idx, 1);
+      renderZoneManageRows();
+    });
+  });
+}
+
+function addZoneManageRow(){
+  zoneManageRows.push({ original: null, value: '' });
+  renderZoneManageRows();
+}
+
+async function saveZoneChanges(){
+  const names = zoneManageRows.map(r => r.value.trim());
+  if(names.some(n => !n)){
+    alert('กรุณากรอกชื่อโซนให้ครบทุกแถว หรือกดลบแถวที่ไม่ต้องการค่ะ');
+    return;
+  }
+  if(new Set(names).size !== names.length){
+    alert('มีชื่อโซนซ้ำกัน กรุณาตั้งชื่อโซนให้ไม่ซ้ำกันค่ะ');
+    return;
+  }
+
+  const remainingOriginals = zoneManageRows.filter(r => r.original).map(r => r.original);
+  const deletedZones = zoneList.filter(z => !remainingOriginals.includes(z));
+  deletedZones.forEach(z=>{
+    lockers = lockers.filter(l => l.zone !== z);
+  });
+
+  zoneManageRows.forEach(r=>{
+    const trimmed = r.value.trim();
+    if(r.original && r.original !== trimmed){
+      lockers.forEach(l=>{ if(l.zone === r.original) l.zone = trimmed; });
+    }
+  });
+
+  zoneList = zoneManageRows.map(r => r.value.trim());
+
+  if(currentZone !== '__overview__' && !zoneList.includes(currentZone)){
+    currentZone = '__overview__';
+  }
+
+  await saveData();
+  buildZoneTabs();
+  render();
+  closeOverlay();
+}
+
+function openImportExcelPanel(){
+  mode = 'importExcel';
+  parsedImportRows = null;
+  const panel = document.getElementById('panelContent');
+  panel.innerHTML = `
+    <h2>นำเข้าข้อมูลจาก Excel</h2>
+    <div class="sub">อัปโหลดไฟล์ Excel เพื่อเพิ่มล็อคเกอร์ใหม่เข้าไปในโซนที่มีอยู่แล้ว</div>
+
+    <div class="import-format-box">
+      <strong>คอลัมน์ที่รองรับ:</strong>
+      <div class="import-format-cols">โซน · หมายเลขล็อคเกอร์ · สถานะ (ว่าง / ใช้งานแล้ว / ซ่อมบำรุง / ใช้งานไม่ได้) · ชื่อพนักงาน · รหัสพนักงาน · แผนก · วันที่จัดสรร · เคสแจ้งซ่อม · เหตุผลใช้งานไม่ได้ · หมายเหตุ</div>
+      <div class="import-format-note">คอลัมน์ "โซน" และ "หมายเลขล็อคเกอร์" จำเป็นต้องมี ส่วนคอลัมน์อื่นเว้นว่างได้ ระบบจะ<strong>เพิ่มเฉพาะล็อคเกอร์ใหม่ที่ยังไม่มีในระบบเท่านั้น</strong> — ถ้าเลขล็อคเกอร์นั้นมีอยู่แล้วในโซนนั้น จะข้ามแถวนั้นไปโดยไม่แก้ไขข้อมูลเดิม และโซนที่ระบุต้องมีอยู่แล้วในระบบก่อน (ไปสร้างโซนที่หน้า "จัดการโซน" ก่อน) ระบบจะไม่สร้างโซนใหม่ให้จากการนำเข้า</div>
+    </div>
+
+    <button type="button" class="btn btn-ghost" id="downloadTemplateBtn" style="width:100%;margin-bottom:14px;">ดาวน์โหลดเทมเพลต Excel</button>
+
+    <div class="field">
+      <label>เลือกไฟล์ Excel (.xlsx)</label>
+      <input type="file" id="importFileInput" accept=".xlsx,.xls">
+    </div>
+
+    <div id="importPreview"></div>
+
+    <div class="panel-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" id="confirmImportBtn" style="display:none;">ยืนยันนำเข้าข้อมูล</button>
+      <button class="btn btn-ghost" id="cancelImportBtn">ปิด</button>
+    </div>
+  `;
+  document.getElementById('downloadTemplateBtn').addEventListener('click', downloadImportTemplate);
+  document.getElementById('importFileInput').addEventListener('change', handleImportFileSelected);
+  document.getElementById('confirmImportBtn').addEventListener('click', applyImport);
+  document.getElementById('cancelImportBtn').addEventListener('click', closeOverlay);
+  openOverlay();
+}
+
+function downloadImportTemplate(){
+  const zoneName = zoneList[0] || '(ชื่อโซนที่มีอยู่แล้วในระบบ)';
+  const sampleRows = [
+    { 'โซน':zoneName, 'หมายเลขล็อคเกอร์':'ตัวอย่าง-01', 'สถานะ':'ใช้งานแล้ว', 'ชื่อพนักงาน':'Mya Thandar', 'รหัสพนักงาน':'EMP-00600', 'แผนก':'ฝ่ายผลิต', 'วันที่จัดสรร':'2026-05-01', 'เคสแจ้งซ่อม':'', 'เหตุผลใช้งานไม่ได้':'', 'หมายเหตุ':'' },
+    { 'โซน':zoneName, 'หมายเลขล็อคเกอร์':'ตัวอย่าง-02', 'สถานะ':'ว่าง', 'ชื่อพนักงาน':'', 'รหัสพนักงาน':'', 'แผนก':'', 'วันที่จัดสรร':'', 'เคสแจ้งซ่อม':'', 'เหตุผลใช้งานไม่ได้':'', 'หมายเหตุ':'' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(sampleRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Lockers');
+  XLSX.writeFile(wb, 'locker-import-template.xlsx');
+}
+
+function normalizeImportStatus(text){
+  const t = (text || '').toString().trim();
+  if(t === 'ว่าง') return 'available';
+  if(t === 'ใช้งานแล้ว') return 'assigned';
+  if(t === 'ซ่อมบำรุง') return 'maintenance';
+  if(t === 'ใช้งานไม่ได้') return 'unusable';
+  return '';
+}
+
+function processImportRows(rows){
+  const toAdd = [];
+  const skipped = [];
+  const errors = [];
+  const seenInFile = new Set();
+
+  rows.forEach((row, idx)=>{
+    const rowNum = idx + 2;
+    const zone = (row['โซน'] || '').toString().trim();
+    const number = (row['หมายเลขล็อคเกอร์'] || '').toString().trim();
+    if(!zone || !number){
+      errors.push({ row: rowNum, reason: 'ไม่มีชื่อโซนหรือหมายเลขล็อคเกอร์' });
+      return;
+    }
+
+    if(!zoneList.includes(zone)){
+      errors.push({ row: rowNum, reason: `โซน "${zone}" ยังไม่มีอยู่ในระบบ กรุณาสร้างโซนนี้ที่หน้า "จัดการโซน" ก่อนแล้วนำเข้าใหม่อีกครั้ง` });
+      return;
+    }
+
+    const key = zone + '|' + number;
+    const existing = lockers.find(l => l.zone === zone && l.number === number);
+    if(existing || seenInFile.has(key)){
+      skipped.push({ row: rowNum, reason: `ล็อคเกอร์ ${number} ในโซน ${zone} มีอยู่แล้ว จะไม่แก้ไขข้อมูลเดิม` });
+      return;
+    }
+    seenInFile.add(key);
+
+    let status = normalizeImportStatus(row['สถานะ']);
+    const empName = (row['ชื่อพนักงาน'] || '').toString().trim() || null;
+    const empId = (row['รหัสพนักงาน'] || '').toString().trim() || null;
+    const department = (row['แผนก'] || '').toString().trim() || null;
+    const assignedDate = (row['วันที่จัดสรร'] || '').toString().trim() || null;
+    const maintenanceCase = (row['เคสแจ้งซ่อม'] || '').toString().trim() || null;
+    const unusableCase = (row['เหตุผลใช้งานไม่ได้'] || '').toString().trim() || null;
+    const note = (row['หมายเหตุ'] || '').toString().trim() || null;
+
+    if(!status){
+      if(empName) status = 'assigned';
+      else if(maintenanceCase) status = 'maintenance';
+      else if(unusableCase) status = 'unusable';
+      else status = 'available';
+    }
+
+    const record = {
+      zone, number, status,
+      empName: status === 'assigned' ? empName : null,
+      empId: status === 'assigned' ? empId : null,
+      department: status === 'assigned' ? department : null,
+      assignedDate: status === 'assigned' ? assignedDate : null,
+      maintenanceCase: status === 'maintenance' ? maintenanceCase : null,
+      unusableCase: status === 'unusable' ? unusableCase : null,
+      note,
+    };
+
+    toAdd.push(record);
+  });
+
+  return { toAdd, skipped, errors };
+}
+
+async function handleImportFileSelected(e){
+  const file = e.target.files[0];
+  const previewEl = document.getElementById('importPreview');
+  const confirmBtn = document.getElementById('confirmImportBtn');
+  parsedImportRows = null;
+  confirmBtn.style.display = 'none';
+  if(!file){ previewEl.innerHTML = ''; return; }
+
+  previewEl.innerHTML = '<div class="import-status">กำลังอ่านไฟล์...</div>';
+
+  try{
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type:'array', cellDates:true });
+    const sheetName = wb.SheetNames[0];
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval:'', raw:false, dateNF:'yyyy-mm-dd' });
+
+    if(rows.length === 0){
+      previewEl.innerHTML = '<div class="import-status import-error">ไม่พบข้อมูลในไฟล์นี้ค่ะ</div>';
+      return;
+    }
+
+    const result = processImportRows(rows);
+    parsedImportRows = result;
+
+    let html = `<div class="import-status">พบ ${rows.length} แถว — จะเพิ่มใหม่ ${result.toAdd.length} ตู้</div>`;
+    if(result.skipped.length){
+      html += `<div class="import-status">ข้าม ${result.skipped.length} แถว (มีล็อคเกอร์นี้อยู่แล้ว จะไม่แก้ไขข้อมูลเดิม):<ul class="import-error-list">${result.skipped.map(s=>`<li>แถวที่ ${s.row}: ${s.reason}</li>`).join('')}</ul></div>`;
+    }
+    if(result.errors.length){
+      html += `<div class="import-status import-error">พบปัญหา ${result.errors.length} แถว (จะข้ามแถวเหล่านี้):<ul class="import-error-list">${result.errors.map(er=>`<li>แถวที่ ${er.row}: ${er.reason}</li>`).join('')}</ul></div>`;
+    }
+    previewEl.innerHTML = html;
+
+    if(result.toAdd.length){
+      confirmBtn.style.display = 'block';
+    }
+  }catch(err){
+    console.error(err);
+    previewEl.innerHTML = '<div class="import-status import-error">ไม่สามารถอ่านไฟล์นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ Excel (.xlsx) ที่ถูกต้องค่ะ</div>';
+  }
+}
+
+async function applyImport(){
+  if(!parsedImportRows) return;
+  const { toAdd } = parsedImportRows;
+
+  toAdd.forEach(record=>{
+    lockers.push({
+      id: uid(), zone: record.zone, number: record.number, status: record.status,
+      empName: record.empName, empId: record.empId, department: record.department,
+      assignedDate: record.assignedDate, note: record.note, history: [],
+      maintenanceCase: record.maintenanceCase, unusableCase: record.unusableCase,
+      empPhoto: null, issuePhoto: null,
+    });
+  });
+
+  const addedCount = toAdd.length;
+
+  await saveData();
+  buildZoneTabs();
+  render();
+  closeOverlay();
+  alert(`นำเข้าข้อมูลสำเร็จค่ะ: เพิ่มใหม่ ${addedCount} ตู้`);
+}
+
+function wireChipGroup(containerId, onChange){
+  const container = document.getElementById(containerId);
+  container.querySelectorAll('.note-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      container.querySelectorAll('.note-chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      container.dataset.value = btn.dataset.value;
+      onChange();
+    });
+  });
+}
+
+document.getElementById('search').addEventListener('input', render);
+wireChipGroup('statusFilterChips', render);
+document.getElementById('ovSearch').addEventListener('input', render);
+wireChipGroup('ovStatusFilterChips', render);
+document.getElementById('addLockerBtn').addEventListener('click', openNewLockerPanel);
+document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeOverlay(); });
+document.getElementById('photoLightbox').addEventListener('click', closeLightbox);
+
+accessCode = ensureAccessCode();
+loadData();
+</script>
+</body>
+</html>
